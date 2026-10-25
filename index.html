@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Comparador de autos usados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: supuestos en una franja, fichas de hasta 5 autos en grilla, resultados en tabla + barras de costo real */
+:root{
+  --bg:#F3F4F1; --panel:#FFFFFF; --ink:#1C2330; --muted:#5E6673; --line:#D9DCD6;
+  --accent:#B86E00; --accent-soft:#F6E7CC; --good:#1E7A5A; --good-soft:#DDF0E8;
+  --seg-neto:#2F3A4C; --seg-deuda:#D08A1C; --seg-mant:#4F8C99; --input:#FBFBF8;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Source Sans 3","Segoe UI",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14181F; --panel:#1C222B; --ink:#E7EAEE; --muted:#9AA3AF; --line:#2E3642;
+  --accent:#F0A23A; --accent-soft:#3A2D18; --good:#5CC79E; --good-soft:#173428;
+  --seg-neto:#8D9BB2; --seg-deuda:#E3A23F; --seg-mant:#6FB3C0; --input:#161B22; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14181F; --panel:#1C222B; --ink:#E7EAEE; --muted:#9AA3AF; --line:#2E3642;
+  --accent:#F0A23A; --accent-soft:#3A2D18; --good:#5CC79E; --good-soft:#173428;
+  --seg-neto:#8D9BB2; --seg-deuda:#E3A23F; --seg-mant:#6FB3C0; --input:#161B22; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+.wrap{max-width:1280px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:2.1rem;font-weight:700}
+h2{font-size:1.35rem;font-weight:600}
+.lead{color:var(--muted);max-width:68ch;margin:6px 0 0}
+.eyebrow{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.12em;font-size:.78rem;color:var(--accent);font-weight:600}
+.num,input[type=number]{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+label{display:flex;flex-direction:column;gap:4px;font-size:.84rem;color:var(--muted);min-width:0}
+input,select{font:inherit;font-size:.95rem;color:var(--ink);background:var(--input);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+button{font:inherit;font-weight:600;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px}
+button:hover{border-color:var(--accent)}
+/* supuestos */
+.assump{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.assump summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:1.1rem}
+.grid-a{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:14px}
+.parts{margin-top:18px;overflow-x:auto}
+.parts table{border-collapse:collapse;width:100%;min-width:560px}
+.parts th,.parts td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;font-size:.88rem}
+.parts th{color:var(--muted);font-weight:600}
+.parts input{padding:5px 7px}
+.hint{font-size:.8rem;color:var(--muted)}
+/* autos */
+.cars{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:14px}
+.car{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.car.off{opacity:.55}
+.car-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.slot{font-family:var(--f-display);font-weight:700;font-size:1.05rem}
+.toggle{flex-direction:row;align-items:center;gap:6px;font-size:.82rem}
+.toggle input{width:auto}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.group{border-top:1px dashed var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.group-t{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:.74rem;color:var(--muted);font-weight:600}
+.checks{display:flex;flex-direction:column;gap:4px}
+.checks label{flex-direction:row;align-items:center;gap:7px;color:var(--ink);font-size:.84rem}
+.checks input{width:auto}
+.mini{display:flex;justify-content:space-between;font-size:.84rem;color:var(--muted)}
+.mini b{color:var(--ink);font-family:var(--f-mono);font-weight:500}
+/* resultados */
+.results{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:18px}
+.verdict{background:var(--good-soft);border-radius:8px;padding:12px 14px;font-size:.98rem}
+.verdict b{color:var(--good)}
+.tbl{overflow-x:auto}
+.tbl table{border-collapse:collapse;width:100%;min-width:640px}
+.tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.tbl th:first-child,.tbl td:first-child{text-align:left;color:var(--muted);white-space:normal}
+.tbl thead th{font-family:var(--f-display);font-size:1rem;color:var(--ink);font-weight:600;vertical-align:bottom}
+.tbl tr.total td{font-weight:700;color:var(--ink);border-top:2px solid var(--ink)}
+.tbl tr.total td:first-child{color:var(--ink)}
+.tbl .sub td{font-size:.86rem}
+.neg{color:var(--good)}
+.pill{display:inline-block;font-family:var(--f-display);font-weight:700;font-size:.82rem;padding:2px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.pill.first{background:var(--good-soft);color:var(--good)}
+/* barras */
+.bars{display:flex;flex-direction:column;gap:12px}
+.bar-row{display:grid;grid-template-columns:minmax(110px,180px) 1fr;gap:12px;align-items:center}
+.bar-name{font-weight:600;font-size:.9rem;min-width:0;overflow-wrap:anywhere}
+.track{position:relative;height:26px;background:transparent}
+.segs{position:absolute;inset:0 auto 0 0;display:flex;height:100%;border-radius:4px;overflow:hidden}
+.segs span{height:100%}
+.resale{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--panel) 0 4px,transparent 4px 8px);border-left:2px solid var(--good)}
+.bar-val{position:absolute;top:50%;transform:translateY(-50%);font-family:var(--f-mono);font-size:.8rem;padding-left:8px;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.legend .str{background:repeating-linear-gradient(135deg,var(--muted) 0 2px,transparent 2px 4px);border-left:2px solid var(--good)}
+.notes{font-size:.84rem;color:var(--muted);max-width:80ch;display:flex;flex-direction:column;gap:6px}
+@media (max-width:520px){h1{font-size:1.7rem}.bar-row{grid-template-columns:1fr;gap:4px}}
+@media (prefers-reduced-motion:no-preference){.segs span,.resale{transition:width .25s ease,left .25s ease}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Compra de SUV usada · Lima</div>
+    <h1>Comparador de autos usados</h1>
+    <p class="lead">Compara hasta 5 autos por su costo real: lo que pagas con descuento, más la deuda de mantenimiento y el mantenimiento durante los años que lo tendrás, menos lo que recuperas al revenderlo. Los datos cargados son ejemplos referenciales; reemplázalos con los avisos que encuentres.</p>
+  </header>
+
+  <details class="assump" id="assump">
+    <summary>Supuestos generales (aplican a todos los autos)</summary>
+    <div class="grid-a" id="gen"></div>
+    <div class="parts">
+      <table>
+        <thead><tr><th>Pieza de desgaste</th><th>Costo (US$)</th><th>Vida útil (km)</th><th>Vida útil (años)</th></tr></thead>
+        <tbody id="partsBody"></tbody>
+      </table>
+      <p class="hint">Completa la vida útil en km o en años. Si una pieza no tiene factura de cambio y el auto ya pasó el umbral de su vida útil, su costo se suma como deuda.</p>
+    </div>
+  </details>
+
+  <section>
+    <div class="sec-head">
+      <div><h2>Los autos</h2><p class="hint" style="margin:4px 0 0">Si conoces el precio de reventa (por ejemplo, de avisos del mismo modelo con más años), escríbelo y reemplaza al estimado.</p></div>
+      <button type="button" id="reset">Restablecer ejemplo</button>
+    </div>
+    <div class="cars" id="cars" style="margin-top:14px"></div>
+  </section>
+
+  <section class="results">
+    <div class="sec-head"><h2>Resultado</h2><span class="hint" id="horizon"></span></div>
+    <div class="verdict" id="verdict"></div>
+    <div class="bars" id="bars"></div>
+    <div class="legend">
+      <span><i style="background:var(--seg-neto)"></i>Precio con descuento</span>
+      <span><i style="background:var(--seg-deuda)"></i>Deuda de mantenimiento</span>
+      <span><i style="background:var(--seg-mant)"></i>Mantenimiento en la tenencia</span>
+      <span><i class="str"></i>Lo que recuperas al revender</span>
+    </div>
+    <div class="tbl"><table id="tbl"></table></div>
+    <div class="notes">
+      <span><b>Costo real</b> = precio con descuento + deuda de mantenimiento + mantenimiento total − valor de reventa.</span>
+      <span>La reventa se calcula sobre el precio publicado, no sobre el precio con descuento: lo que negocias no cambia lo que vale el auto en el mercado, así que cada dólar de descuento baja tu costo real en un dólar.</span>
+      <span>Mantenimiento anual = preventivo (km ÷ intervalo × costo del servicio) + desgaste de piezas + reparaciones que suben cada año después de la garantía. El ajuste por marca sube o baja ese total para cada auto.</span>
+    </div>
+  </section>
+</div>
+
+<script>
+const PARTS0=[
+ {n:"Llantas (juego de 4)",c:400,km:45000,y:null},
+ {n:"Frenos (pastillas y discos)",c:200,km:40000,y:null},
+ {n:"Amortiguadores (juego)",c:500,km:90000,y:null},
+ {n:"Batería 12V",c:130,km:null,y:4},
+ {n:"Aceite de caja (CVT o automática)",c:150,km:60000,y:null}
+];
+const GEN0={K:10000,N:4,Y:2026,I:5000,S:150,R0:150,g:15,G:3,U:90};
+const GENDEF=[
+ ["K","Km que manejas al año",1000],["N","Años que tendrás el auto",1],["Y","Año actual",1],
+ ["I","Intervalo de servicio (km)",1000],["S","Costo por servicio (US$)",10],
+ ["R0","Reparaciones al fin de garantía (US$/año)",10],["g","Aumento anual de reparaciones (%)",1],
+ ["G","Edad en que vence la garantía",1],["U","Umbral de vida útil para deuda (%)",5]
+];
+const CARS0=[
+ {on:true,m:"Kia Seltos",y:2022,km:45000,p:18000,dp:0,dv:500,dep:11,rv:"",adj:0,inv:[false,false,false,false,false]},
+ {on:true,m:"Kia Seltos",y:2020,km:85000,p:15500,dp:0,dv:0,dep:11,rv:"",adj:0,inv:[false,false,false,false,false]},
+ {on:true,m:"Toyota Yaris Cross HEV",y:2024,km:25000,p:20000,dp:0,dv:0,dep:8,rv:"",adj:-10,inv:[false,false,false,false,false]},
+ {on:true,m:"Toyota Corolla Cross",y:2021,km:70000,p:19000,dp:0,dv:800,dep:8,rv:"",adj:-10,inv:[true,false,false,false,false]},
+ {on:true,m:"Nissan Kicks",y:2022,km:50000,p:15500,dp:3,dv:0,dep:12,rv:"",adj:5,inv:[false,false,false,false,false]}
+];
+const clone=o=>JSON.parse(JSON.stringify(o));
+let st;
+try{const s=JSON.parse(localStorage.getItem("cmp-autos-v1")||"null");if(s&&s.cars&&s.cars.length===5)st=s}catch(e){}
+if(!st)st={gen:clone(GEN0),parts:clone(PARTS0),cars:clone(CARS0)};
+const save=()=>{try{localStorage.setItem("cmp-autos-v1",JSON.stringify(st))}catch(e){}};
+const fmt=v=>(v<0?"−":"")+"US$"+Math.round(Math.abs(v)).toLocaleString("en-US");
+const n=v=>{const x=parseFloat(v);return isFinite(x)?x:0};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function buildGen(){
+  document.getElementById("gen").innerHTML=GENDEF.map(([k,l,s])=>`<label for="g-${k}">${l}<input type="number" id="g-${k}" data-g="${k}" step="${s}" value="${st.gen[k]}"></label>`).join("");
+  document.getElementById("partsBody").innerHTML=st.parts.map((p,i)=>`<tr>
+    <td><input id="p-n-${i}" data-p="${i}" data-f="n" value="${esc(p.n)}" aria-label="Nombre de pieza"></td>
+    <td><input type="number" id="p-c-${i}" data-p="${i}" data-f="c" step="10" value="${p.c??""}" aria-label="Costo"></td>
+    <td><input type="number" id="p-km-${i}" data-p="${i}" data-f="km" step="1000" value="${p.km??""}" aria-label="Vida útil km"></td>
+    <td><input type="number" id="p-y-${i}" data-p="${i}" data-f="y" step="1" value="${p.y??""}" aria-label="Vida útil años"></td></tr>`).join("");
+}
+function buildCars(){
+  document.getElementById("cars").innerHTML=st.cars.map((c,i)=>`
+  <article class="car${c.on?"":" off"}" id="car-${i}">
+    <div class="car-top"><span class="slot">Auto ${i+1}</span>
+      <label class="toggle" for="c-on-${i}"><input type="checkbox" id="c-on-${i}" data-c="${i}" data-f="on" ${c.on?"checked":""}>Comparar</label></div>
+    <label for="c-m-${i}">Modelo<input id="c-m-${i}" data-c="${i}" data-f="m" value="${esc(c.m)}"></label>
+    <div class="row2">
+      <label for="c-y-${i}">Año<input type="number" id="c-y-${i}" data-c="${i}" data-f="y" value="${c.y}"></label>
+      <label for="c-km-${i}">Km actual<input type="number" id="c-km-${i}" data-c="${i}" data-f="km" step="1000" value="${c.km}"></label>
+    </div>
+    <div class="group"><span class="group-t">Precio y descuento</span>
+      <label for="c-p-${i}">Precio publicado (US$)<input type="number" id="c-p-${i}" data-c="${i}" data-f="p" step="100" value="${c.p}"></label>
+      <div class="row2">
+        <label for="c-dp-${i}">Descuento (%)<input type="number" id="c-dp-${i}" data-c="${i}" data-f="dp" step="0.5" value="${c.dp}"></label>
+        <label for="c-dv-${i}">Descuento (US$)<input type="number" id="c-dv-${i}" data-c="${i}" data-f="dv" step="100" value="${c.dv}"></label>
+      </div>
+      <div class="mini">Pagas <b id="o-net-${i}"></b></div>
+    </div>
+    <div class="group"><span class="group-t">Reventa</span>
+      <div class="row2">
+        <label for="c-dep-${i}">Depreciación anual (%)<input type="number" id="c-dep-${i}" data-c="${i}" data-f="dep" step="0.5" value="${c.dep}"></label>
+        <label for="c-rv-${i}">Reventa conocida (US$)<input type="number" id="c-rv-${i}" data-c="${i}" data-f="rv" step="100" placeholder="opcional" value="${c.rv}"></label>
+      </div>
+      <div class="mini">Recuperas <b id="o-rv-${i}"></b></div>
+    </div>
+    <div class="group"><span class="group-t">Mantenimiento</span>
+      <label for="c-adj-${i}">Ajuste por marca (%)<input type="number" id="c-adj-${i}" data-c="${i}" data-f="adj" step="5" value="${c.adj}"></label>
+      <span class="hint">Marca la pieza si el vendedor tiene factura de su último cambio.</span>
+      <div class="checks">${st.parts.map((p,j)=>`<label for="c-inv-${i}-${j}"><input type="checkbox" id="c-inv-${i}-${j}" data-c="${i}" data-inv="${j}" ${c.inv[j]?"checked":""}><span id="c-invl-${i}-${j}">${esc(p.n)}</span></label>`).join("")}</div>
+      <div class="mini">Deuda inicial <b id="o-debt-${i}"></b></div>
+    </div>
+  </article>`).join("");
+}
+
+function calc(c){
+  const G=st.gen,K=n(G.K),N=Math.max(0,Math.min(15,Math.round(n(G.N)))),u=n(G.U)/100;
+  const age=Math.max(0,n(G.Y)-n(c.y));
+  const net=Math.max(0,n(c.p)*(1-n(c.dp)/100)-n(c.dv));
+  const disc=n(c.p)-net;
+  const adj=1+n(c.adj)/100;
+  const P=n(G.I)>0?K/n(G.I)*n(G.S):0;
+  let D=0,debt=0;
+  st.parts.forEach((p,j)=>{
+    const km=n(p.km),yy=n(p.y),cost=n(p.c);
+    if(km>0)D+=cost/km*K;else if(yy>0)D+=cost/yy;
+    if(!c.inv[j]&&((km>0&&n(c.km)>=km*u)||(yy>0&&age>=yy*u)))debt+=cost;
+  });
+  let R=0;
+  for(let t=1;t<=N;t++){const a=age+t-1;if(a>=n(G.G))R+=n(G.R0)*Math.pow(1+n(G.g)/100,a-n(G.G))}
+  const maint=((P+D)*N+R)*adj;
+  const rvKnown=c.rv!==""&&n(c.rv)>0;
+  const resale=rvKnown?n(c.rv):n(c.p)*Math.pow(1-n(c.dep)/100,N);
+  const real=net+debt+maint-resale;
+  const kmTot=K*N;
+  return{age,net,disc,P:P*adj,D:D*adj,R:R*adj,maint,debt,resale,rvKnown,real,perKm:kmTot>0?real/kmTot:0,perYear:N>0?real/N:0,N};
+}
+
+function render(){
+  const res=st.cars.map(calc);
+  res.forEach((r,i)=>{
+    document.getElementById("o-net-"+i).textContent=fmt(r.net)+(r.disc>0?` (ahorras ${fmt(r.disc)})`:"");
+    document.getElementById("o-rv-"+i).textContent=fmt(r.resale)+(r.rvKnown?" · conocida":" · estimada");
+    document.getElementById("o-debt-"+i).textContent=fmt(r.debt);
+    document.getElementById("car-"+i).classList.toggle("off",!st.cars[i].on);
+  });
+  const act=st.cars.map((c,i)=>({c,r:res[i],i})).filter(x=>x.c.on&&n(x.c.p)>0);
+  const sorted=[...act].sort((a,b)=>a.r.real-b.r.real);
+  const rank={};sorted.forEach((x,k)=>rank[x.i]=k+1);
+  const N=act[0]?act[0].r.N:Math.round(n(st.gen.N));
+  document.getElementById("horizon").textContent=`Horizonte: ${N} años · ${(n(st.gen.K)*N).toLocaleString("en-US")} km`;
+  const v=document.getElementById("verdict");
+  if(!sorted.length){v.innerHTML="Activa al menos un auto con precio para ver el resultado.";}
+  else if(sorted.length===1){v.innerHTML=`<b>${esc(sorted[0].c.m)} ${sorted[0].c.y}</b> te costaría ${fmt(sorted[0].r.real)} en ${N} años. Agrega otro auto para comparar.`;}
+  else{const a=sorted[0],b=sorted[1],w=sorted[sorted.length-1];
+    v.innerHTML=`<b>${esc(a.c.m)} ${a.c.y}</b> es la opción más barata: ${fmt(a.r.real)} de costo real en ${N} años, ${fmt(a.r.perYear)} por año. Le saca ${fmt(b.r.real-a.r.real)} al segundo lugar (${esc(b.c.m)} ${b.c.y}) y ${fmt(w.r.real-a.r.real)} al último.`;}
+  // barras
+  const max=Math.max(1,...act.map(x=>x.r.net+x.r.debt+x.r.maint))*1.3;
+  document.getElementById("bars").innerHTML=sorted.map(x=>{const r=x.r,pc=v=>(Math.max(0,v)/max*100);
+    const tot=r.net+r.debt+r.maint,rv=Math.min(r.resale,tot);
+    return `<div class="bar-row"><div class="bar-name">${rank[x.i]}. ${esc(x.c.m)} ${x.c.y}</div>
+    <div class="track" role="img" aria-label="${esc(x.c.m)}: costo real ${fmt(r.real)}">
+      <div class="segs" style="width:${pc(tot)}%"><span style="width:${r.net/tot*100}%;background:var(--seg-neto)"></span><span style="width:${r.debt/tot*100}%;background:var(--seg-deuda)"></span><span style="width:${r.maint/tot*100}%;background:var(--seg-mant)"></span></div>
+      <div class="resale" style="left:${pc(tot-rv)}%;width:${pc(rv)}%"></div>
+      <span class="bar-val" style="left:${pc(tot)}%">${fmt(r.real)}</span>
+    </div></div>`}).join("");
+  // tabla
+  const cols=st.cars.map((c,i)=>({c,r:res[i],i})).filter(x=>x.c.on);
+  const row=(lab,f,cls="")=>`<tr class="${cls}"><td>${lab}</td>${cols.map(x=>`<td class="num">${f(x)}</td>`).join("")}</tr>`;
+  document.getElementById("tbl").innerHTML=cols.length?`<thead><tr><th></th>${cols.map(x=>`<th>${esc(x.c.m)}<br><span class="hint">${x.c.y} · ${n(x.c.km).toLocaleString("en-US")} km</span></th>`).join("")}</tr></thead><tbody>
+    ${row("Ranking",x=>rank[x.i]?`<span class="pill${rank[x.i]===1?" first":""}">#${rank[x.i]}</span>`:"–")}
+    ${row("Precio publicado",x=>fmt(n(x.c.p)))}
+    ${row("Descuento",x=>x.r.disc>0?`<span class="neg">${fmt(-x.r.disc)}</span>`:"–")}
+    ${row("Precio con descuento",x=>fmt(x.r.net))}
+    ${row("Deuda de mantenimiento",x=>fmt(x.r.debt))}
+    ${row("Preventivo en la tenencia",x=>fmt(x.r.P*x.r.N),"sub")}
+    ${row("Desgaste de piezas en la tenencia",x=>fmt(x.r.D*x.r.N),"sub")}
+    ${row("Reparaciones por antigüedad",x=>fmt(x.r.R),"sub")}
+    ${row("Mantenimiento total",x=>fmt(x.r.maint))}
+    ${row("Valor de reventa",x=>`<span class="neg">${fmt(-x.r.resale)}</span>`)}
+    ${row("Costo real",x=>fmt(x.r.real),"total")}
+    ${row("Costo real por año",x=>fmt(x.r.perYear),"sub")}
+    ${row("Costo real por km",x=>"US$"+x.r.perKm.toFixed(2),"sub")}
+  </tbody>`:"<tbody><tr><td>No hay autos activos.</td></tr></tbody>";
+  save();
+}
+
+document.addEventListener("input",e=>{
+  const t=e.target,d=t.dataset;
+  if(d.g!==undefined){st.gen[d.g]=t.value===""?0:n(t.value);}
+  else if(d.p!==undefined){const p=st.parts[+d.p];if(d.f==="n"){p.n=t.value;st.cars.forEach((_,i)=>{const el=document.getElementById(`c-invl-${i}-${d.p}`);if(el)el.textContent=t.value})}else p[d.f]=t.value===""?null:n(t.value);}
+  else if(d.inv!==undefined){st.cars[+d.c].inv[+d.inv]=t.checked;}
+  else if(d.c!==undefined){const c=st.cars[+d.c];
+    if(d.f==="on")c.on=t.checked;else if(d.f==="m")c.m=t.value;else if(d.f==="rv")c.rv=t.value;else c[d.f]=t.value===""?0:n(t.value);}
+  else return;
+  render();
+});
+document.getElementById("reset").addEventListener("click",()=>{st={gen:clone(GEN0),parts:clone(PARTS0),cars:clone(CARS0)};buildGen();buildCars();render();});
+buildGen();buildCars();render();
+</script>
+</body>
+</html>
